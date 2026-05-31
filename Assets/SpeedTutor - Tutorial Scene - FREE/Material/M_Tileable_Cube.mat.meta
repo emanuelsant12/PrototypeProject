@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: ec8cc910d2d8dbd4ea0b4cecdf397a8b
+timeCreated: 1560961675
+licenseType: Store
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 159460
+  packageName: SpeedTutor - Tutorial Scene - FREE
+  packageVersion: 1.0
+  assetPath: Assets/SpeedTutor - Tutorial Scene - FREE/Material/M_Tileable_Cube.mat
+  uploadId: 343528

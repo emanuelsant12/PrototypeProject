@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 6d6892a877c0a664cb5a53eb2dd13c88
+timeCreated: 1576415651
+licenseType: Store
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 159460
+  packageName: SpeedTutor - Tutorial Scene - FREE
+  packageVersion: 1.0
+  assetPath: Assets/SpeedTutor - Tutorial Scene - FREE/Prefabs/Large_Cube.prefab
+  uploadId: 343528

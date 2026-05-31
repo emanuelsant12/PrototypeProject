@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 1a86798efce66624684ac647bdd0edcd
+timeCreated: 1576415622
+licenseType: Store
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 159460
+  packageName: SpeedTutor - Tutorial Scene - FREE
+  packageVersion: 1.0
+  assetPath: Assets/SpeedTutor - Tutorial Scene - FREE/Prefabs/Floor1.prefab
+  uploadId: 343528

@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 7f108f287f4d0fb40b30667322ecde51
+timeCreated: 1576415642
+licenseType: Store
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 159460
+  packageName: SpeedTutor - Tutorial Scene - FREE
+  packageVersion: 1.0
+  assetPath: Assets/SpeedTutor - Tutorial Scene - FREE/Prefabs/Small_Cube.prefab
+  uploadId: 343528

@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: fdf8da96b2183e548a43bd8ce776a5d6
+timeCreated: 1576430865
+licenseType: Store
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 25800000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 159460
+  packageName: SpeedTutor - Tutorial Scene - FREE
+  packageVersion: 1.0
+  assetPath: Assets/SpeedTutor - Tutorial Scene - FREE/Scenes/SpeedTutor Test Scene/LightingData.asset
+  uploadId: 343528

@@ -1,0 +1,11 @@
+Model Information:
+* title:	Project Titan - Painter's Tools Kit
+* source:	https://sketchfab.com/3d-models/project-titan-painters-tools-kit-a96c057d4bb342f68d299baf05821bed
+* author:	Marcus Rain Skoog (https://sketchfab.com/mistrain)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Project Titan - Painter's Tools Kit" (https://sketchfab.com/3d-models/project-titan-painters-tools-kit-a96c057d4bb342f68d299baf05821bed) by Marcus Rain Skoog (https://sketchfab.com/mistrain) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
