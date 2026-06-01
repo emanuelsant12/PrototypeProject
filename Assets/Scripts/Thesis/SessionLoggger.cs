@@ -300,6 +300,18 @@ public class SessionLogger : MonoBehaviour
         return input;
     }
 
+    public void StartNewSession(string newParticipantId, string newCondition)
+    {
+        participantId = newParticipantId;
+        condition = newCondition;
+
+        sessionStarted = false;
+        activeSessionFolder = "";
+        eventsPath = "";
+
+        StartSession();
+    }
+
     [Serializable]
     private class SimpleEvent
     {

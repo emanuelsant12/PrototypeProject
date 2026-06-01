@@ -3,6 +3,8 @@ using UnityEngine.InputSystem;
 
 public class CanvasPainter : MonoBehaviour
 {
+    public GamificationManager gamificationManager;
+
     [Header("References")]
     public Transform brushTip;
     public RenderTexture canvasRT;
@@ -32,6 +34,9 @@ public class CanvasPainter : MonoBehaviour
 
     [Header("Logging")]
     public float minLogDistanceUV = 0.0025f;
+
+    [Header("Gamified Feedback")]
+    public GamifiedFeedbackManager gamifiedFeedback;
 
     [Header("Debug")]
     public bool debugLogs = false;
@@ -111,6 +116,14 @@ public class CanvasPainter : MonoBehaviour
                     brushSettings.eraser
                 );
 
+                if (gamificationManager != null)
+                {
+                    gamificationManager.RegisterStrokePoint(
+                        brushSettings.value,
+                        brushSettings.eraser
+                    );
+                }
+
                 lastLoggedUv = uv;
                 hasLastLoggedUv = true;
             }
@@ -169,30 +182,7 @@ public class CanvasPainter : MonoBehaviour
 
     public void Submit()
     {
-        Debug.Log("[CanvasPainter] Submit() called.");
-
-        if (sessionLogger == null)
-        {
-            Debug.LogError("[CanvasPainter] Cannot submit because SessionLogger is missing.");
-            return;
-        }
-
-        if (canvasRT == null)
-        {
-            Debug.LogError("[CanvasPainter] Cannot submit because CanvasRT is missing.");
-            return;
-        }
-
-        string savedPath = sessionLogger.SaveRenderTextureAsPng(canvasRT, "final.png");
-
-        if (string.IsNullOrEmpty(savedPath))
-        {
-            Debug.LogError("[CanvasPainter] Submit failed. PNG was not saved.");
-        }
-        else
-        {
-            Debug.Log($"[CanvasPainter] Submit successful. Saved to: {savedPath}");
-        }
+        SubmitWithCustomFileName("final.png");
     }
 
     private bool IsDrawPressed()
@@ -238,5 +228,33 @@ public class CanvasPainter : MonoBehaviour
     {
         if (actionReference != null && actionReference.action != null)
             actionReference.action.Disable();
+    }
+
+    public void SubmitWithCustomFileName(string fileName)
+    {
+        Debug.Log($"[CanvasPainter] SubmitWithCustomFileName called: {fileName}");
+
+        if (sessionLogger == null)
+        {
+            Debug.LogError("[CanvasPainter] Cannot submit because SessionLogger is missing.");
+            return;
+        }
+
+        if (canvasRT == null)
+        {
+            Debug.LogError("[CanvasPainter] Cannot submit because CanvasRT is missing.");
+            return;
+        }
+
+        string savedPath = sessionLogger.SaveRenderTextureAsPng(canvasRT, fileName);
+
+        if (string.IsNullOrEmpty(savedPath))
+        {
+            Debug.LogError("[CanvasPainter] Submit failed.");
+        }
+        else
+        {
+            Debug.Log($"[CanvasPainter] Saved: {savedPath}");
+        }
     }
 }
