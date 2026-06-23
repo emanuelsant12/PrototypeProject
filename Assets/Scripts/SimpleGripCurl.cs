@@ -119,7 +119,7 @@ public class SimpleGripCurl : MonoBehaviour
             : 0f;
 
         //debug the trigger
-        Debug.Log("Trigger Value: " + trigger);
+      //  Debug.Log("Trigger Value: " + trigger);
 
         Apply(indexJoints, index0, indexMax * trigger);
 

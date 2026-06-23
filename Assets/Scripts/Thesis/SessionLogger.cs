@@ -16,21 +16,30 @@ public class SessionLogger : MonoBehaviour
 {
     [Header("Session Info")]
     public string participantId = "P01";
-    public string condition = "Baseline";
+    public string condition = "baseline";
 
     [Header("Save Location")]
     [Tooltip("Example: C:/Users/YourName/Desktop/VRPaintingStudy or leave empty to use fallback.")]
     public string preferredRoot = "";
 
     [Tooltip("Used inside Application.persistentDataPath if preferredRoot fails or when running on Android/Quest.")]
-    public string fallbackFolderName = "VRPaintingStudy";
+    public string fallbackFolderName = "StudyData";
+
+    [Header("Image Export Fix")]
+    public SaveImageTransform imageTransform = SaveImageTransform.Rotate90CounterClockwise;
 
     [Header("Runtime Info")]
     [SerializeField] private string activeSessionFolder;
     [SerializeField] private string eventsPath;
 
-    [Header("Image Export Fix")]
-    public SaveImageTransform imageTransform = SaveImageTransform.Rotate90CounterClockwise;
+    [Header("Editor Project Copy")]
+    public bool alsoCopyToProjectFolderInEditor = true;
+
+    [Tooltip("Folder created beside Assets, Packages, and ProjectSettings.")]
+    public string projectCopyFolderName = "StudyData";
+
+    [SerializeField] private string projectCopySessionFolder;
+    [SerializeField] private string projectCopyEventsPath;
 
     public string ActiveSessionFolder => activeSessionFolder;
     public string EventsPath => eventsPath;
@@ -59,6 +68,24 @@ public class SessionLogger : MonoBehaviour
 
         eventsPath = Path.Combine(activeSessionFolder, "events.jsonl");
 
+        projectCopySessionFolder = "";
+        projectCopyEventsPath = "";
+
+        #if UNITY_EDITOR
+        if (alsoCopyToProjectFolderInEditor)
+        {
+            string projectRoot = Directory.GetParent(Application.dataPath).FullName;
+            string projectCopyRoot = Path.Combine(projectRoot, projectCopyFolderName);
+
+            projectCopySessionFolder = Path.Combine(projectCopyRoot, sessionFolderName);
+            Directory.CreateDirectory(projectCopySessionFolder);
+
+            projectCopyEventsPath = Path.Combine(projectCopySessionFolder, "events.jsonl");
+
+            Debug.Log($"[SessionLogger] Project copy folder: {projectCopySessionFolder}");
+        }
+        #endif
+
         sessionStarted = true;
 
         LogEvent(new SessionStartedEvent
@@ -75,7 +102,41 @@ public class SessionLogger : MonoBehaviour
         Debug.Log($"[SessionLogger] Session folder: {activeSessionFolder}");
     }
 
-    public void LogStrokePoint(Vector2 uv, Vector3 worldPosition, int brushSizePx, Color brushColor, bool eraser)
+    public void StartNewSession(string newParticipantId, string newCondition)
+    {
+        participantId = newParticipantId;
+        condition = newCondition;
+
+        sessionStarted = false;
+        activeSessionFolder = "";
+        eventsPath = "";
+
+        StartSession();
+    }
+
+    public void LogTaskStarted(string taskName, string taskType, bool gamifiedVisible)
+    {
+        if (!sessionStarted)
+            StartSession();
+
+        LogEvent(new TaskStartedEvent
+        {
+            type = "task_started",
+            time = Time.time,
+            taskName = taskName,
+            taskType = taskType,
+            gamifiedVisible = gamifiedVisible
+        });
+    }
+
+    public void LogStrokePoint(
+        Vector2 uv,
+        Vector3 worldPosition,
+        int brushSizePx,
+        Color brushColor,
+        bool eraser,
+        StrokeScoreResult scoreResult
+    )
     {
         if (!sessionStarted)
             StartSession();
@@ -84,19 +145,32 @@ public class SessionLogger : MonoBehaviour
         {
             type = "stroke_point",
             time = Time.time,
+
             uvX = uv.x,
             uvY = uv.y,
+
             worldX = worldPosition.x,
             worldY = worldPosition.y,
             worldZ = worldPosition.z,
+
             brushSizePx = brushSizePx,
             value = brushColor.r,
-            eraser = eraser
+            eraser = eraser,
+
+            taskType = scoreResult.taskType,
+            scoreCategory = scoreResult.category,
+            pointsAwarded = scoreResult.pointsAwarded,
+            referenceValue = scoreResult.referenceValue,
+            brushValue = scoreResult.brushValue,
+            difference = scoreResult.difference
         });
     }
 
     public void LogCanvasCleared()
     {
+        if (!sessionStarted)
+            StartSession();
+
         LogEvent(new SimpleEvent
         {
             type = "canvas_cleared",
@@ -106,6 +180,9 @@ public class SessionLogger : MonoBehaviour
 
     public void LogSubmitted(string pngPath)
     {
+        if (!sessionStarted)
+            StartSession();
+
         LogEvent(new SubmittedEvent
         {
             type = "submitted",
@@ -125,7 +202,12 @@ public class SessionLogger : MonoBehaviour
             return null;
         }
 
-        string pngPath = Path.Combine(activeSessionFolder, fileName);
+        string safeFileName = SanitizeFileName(fileName);
+
+        if (!safeFileName.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+            safeFileName += ".png";
+
+        string pngPath = Path.Combine(activeSessionFolder, safeFileName);
 
         RenderTexture previous = RenderTexture.active;
 
@@ -148,10 +230,20 @@ public class SessionLogger : MonoBehaviour
             byte[] pngBytes = finalTexture.EncodeToPNG();
             File.WriteAllBytes(pngPath, pngBytes);
 
-            Destroy(sourceTexture);
+#if UNITY_EDITOR
+            if (alsoCopyToProjectFolderInEditor && !string.IsNullOrEmpty(projectCopySessionFolder))
+            {
+                string projectCopyPngPath = Path.Combine(projectCopySessionFolder, safeFileName);
+                File.WriteAllBytes(projectCopyPngPath, pngBytes);
+
+                Debug.Log($"[SessionLogger] Project copy PNG saved: {projectCopyPngPath}");
+            }
+#endif
 
             if (finalTexture != sourceTexture)
                 Destroy(finalTexture);
+
+            Destroy(sourceTexture);
 
             LogSubmitted(pngPath);
 
@@ -175,6 +267,7 @@ public class SessionLogger : MonoBehaviour
             return source;
 
         Color32[] sourcePixels = source.GetPixels32();
+
         int sourceWidth = source.width;
         int sourceHeight = source.height;
 
@@ -244,7 +337,23 @@ public class SessionLogger : MonoBehaviour
         try
         {
             string json = JsonUtility.ToJson(eventData);
-            File.AppendAllText(eventsPath, json + Environment.NewLine);
+            string line = json + Environment.NewLine;
+
+            if (!string.IsNullOrEmpty(eventsPath))
+            {
+                File.AppendAllText(eventsPath, line);
+            }
+            else
+            {
+                Debug.LogError("[SessionLogger] eventsPath is empty. Session was not started correctly.");
+            }
+
+#if UNITY_EDITOR
+            if (alsoCopyToProjectFolderInEditor && !string.IsNullOrEmpty(projectCopyEventsPath))
+            {
+                File.AppendAllText(projectCopyEventsPath, line);
+            }
+#endif
         }
         catch (Exception e)
         {
@@ -300,16 +409,108 @@ public class SessionLogger : MonoBehaviour
         return input;
     }
 
-    public void StartNewSession(string newParticipantId, string newCondition)
+    public void LogTaskSubmitted(
+    string taskName,
+    string taskType,
+    string condition,
+    bool gamifiedVisible,
+    float taskElapsedSeconds,
+    int totalStrokePoints,
+    int excellentPoints,
+    int goodPoints,
+    int okayPoints,
+    int inaccuratePoints,
+    int score,
+    float progressPercent,
+    string savedImagePath
+)
     {
-        participantId = newParticipantId;
-        condition = newCondition;
+        if (!sessionStarted)
+            StartSession();
 
-        sessionStarted = false;
-        activeSessionFolder = "";
-        eventsPath = "";
+        LogEvent(new TaskSubmittedEvent
+        {
+            type = "task_submitted",
+            time = Time.time,
+            taskName = taskName,
+            taskType = taskType,
+            condition = condition,
+            gamifiedVisible = gamifiedVisible,
+            taskElapsedSeconds = taskElapsedSeconds,
+            totalStrokePoints = totalStrokePoints,
+            excellentPoints = excellentPoints,
+            goodPoints = goodPoints,
+            okayPoints = okayPoints,
+            inaccuratePoints = inaccuratePoints,
+            score = score,
+            progressPercent = progressPercent,
+            savedImagePath = savedImagePath
+        });
+    }
 
-        StartSession();
+    public void LogFeedbackShown(string taskName, string taskType, string feedbackText)
+    {
+        if (!sessionStarted)
+            StartSession();
+
+        LogEvent(new FeedbackShownEvent
+        {
+            type = "feedback_shown",
+            time = Time.time,
+            taskName = taskName,
+            taskType = taskType,
+            feedbackText = feedbackText
+        });
+    }
+
+    public void LogSessionComplete()
+    {
+        if (!sessionStarted)
+            StartSession();
+
+        LogEvent(new SimpleEvent
+        {
+            type = "session_complete",
+            time = Time.time
+        });
+    }
+
+
+
+    [Serializable]
+    private class TaskSubmittedEvent
+    {
+        public string type;
+        public float time;
+
+        public string taskName;
+        public string taskType;
+        public string condition;
+        public bool gamifiedVisible;
+
+        public float taskElapsedSeconds;
+
+        public int totalStrokePoints;
+        public int excellentPoints;
+        public int goodPoints;
+        public int okayPoints;
+        public int inaccuratePoints;
+
+        public int score;
+        public float progressPercent;
+
+        public string savedImagePath;
+    }
+
+    [Serializable]
+    private class FeedbackShownEvent
+    {
+        public string type;
+        public float time;
+
+        public string taskName;
+        public string taskType;
+        public string feedbackText;
     }
 
     [Serializable]
@@ -332,6 +533,16 @@ public class SessionLogger : MonoBehaviour
     }
 
     [Serializable]
+    private class TaskStartedEvent
+    {
+        public string type;
+        public float time;
+        public string taskName;
+        public string taskType;
+        public bool gamifiedVisible;
+    }
+
+    [Serializable]
     private class StrokePointEvent
     {
         public string type;
@@ -347,6 +558,13 @@ public class SessionLogger : MonoBehaviour
         public int brushSizePx;
         public float value;
         public bool eraser;
+
+        public string taskType;
+        public string scoreCategory;
+        public int pointsAwarded;
+        public float referenceValue;
+        public float brushValue;
+        public float difference;
     }
 
     [Serializable]

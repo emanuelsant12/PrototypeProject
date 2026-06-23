@@ -3,8 +3,6 @@ using UnityEngine.InputSystem;
 
 public class CanvasPainter : MonoBehaviour
 {
-    public GamificationManager gamificationManager;
-
     [Header("References")]
     public Transform brushTip;
     public RenderTexture canvasRT;
@@ -12,6 +10,7 @@ public class CanvasPainter : MonoBehaviour
     public Material stampMaterial;
     public BrushSettings brushSettings;
     public SessionLogger sessionLogger;
+    public ReferenceScoringManager referenceScoringManager;
 
     [Header("Raycast")]
     public LayerMask canvasLayer;
@@ -35,14 +34,15 @@ public class CanvasPainter : MonoBehaviour
     [Header("Logging")]
     public float minLogDistanceUV = 0.0025f;
 
-    [Header("Gamified Feedback")]
-    public GamifiedFeedbackManager gamifiedFeedback;
-
     [Header("Debug")]
     public bool debugLogs = false;
 
     private Vector2 lastLoggedUv;
     private bool hasLastLoggedUv;
+
+    private Vector2 lastPaintUv;
+    private bool hasLastPaintUv;
+    private bool wasDrawingLastFrame;
 
     private void OnEnable()
     {
@@ -78,14 +78,24 @@ public class CanvasPainter : MonoBehaviour
             Submit();
         }
 
-        if (IsDrawPressed())
+        bool isDrawingNow = IsDrawPressed();
+
+        if (isDrawingNow)
         {
             TryPaint();
         }
         else
         {
+            if (wasDrawingLastFrame && referenceScoringManager != null)
+            {
+                referenceScoringManager.EndCurrentBrushStroke();
+            }
+
             hasLastLoggedUv = false;
+            hasLastPaintUv = false;
         }
+
+        wasDrawingLastFrame = isDrawingNow;
     }
 
     private void TryPaint()
@@ -100,34 +110,69 @@ public class CanvasPainter : MonoBehaviour
 
         Vector2 uv = hit.textureCoord;
 
-        PaintAtUV(uv);
+        PaintSmoothStroke(uv);
 
-        if (brushSettings != null && sessionLogger != null)
+        if (brushSettings == null || sessionLogger == null)
+            return;
+
+        bool shouldLog = !hasLastLoggedUv || Vector2.Distance(uv, lastLoggedUv) >= minLogDistanceUV;
+
+        if (!shouldLog)
+            return;
+
+        StrokeScoreResult scoreResult = default;
+
+        if (referenceScoringManager != null)
         {
-            bool shouldLog = !hasLastLoggedUv || Vector2.Distance(uv, lastLoggedUv) >= minLogDistanceUV;
-
-            if (shouldLog)
-            {
-                sessionLogger.LogStrokePoint(
-                    uv,
-                    hit.point,
-                    brushSettings.sizePx,
-                    brushSettings.CurrentColor,
-                    brushSettings.eraser
-                );
-
-                if (gamificationManager != null)
-                {
-                    gamificationManager.RegisterStrokePoint(
-                        brushSettings.value,
-                        brushSettings.eraser
-                    );
-                }
-
-                lastLoggedUv = uv;
-                hasLastLoggedUv = true;
-            }
+            scoreResult = referenceScoringManager.RegisterStroke(
+                uv,
+                brushSettings.value,
+                brushSettings.eraser
+            );
         }
+
+        sessionLogger.LogStrokePoint(
+            uv,
+            hit.point,
+            brushSettings.sizePx,
+            brushSettings.CurrentColor,
+            brushSettings.eraser,
+            scoreResult
+        );
+
+        lastLoggedUv = uv;
+        hasLastLoggedUv = true;
+    }
+
+    private void PaintSmoothStroke(Vector2 currentUv)
+    {
+        int brushSizePx = brushSettings != null ? brushSettings.sizePx : 32;
+
+        float brushSizeNormalized = brushSizePx / (float)Mathf.Max(canvasRT.width, canvasRT.height);
+
+        // Smaller spacing = smoother stroke, but more expensive.
+        float spacing = brushSizeNormalized * 0.35f;
+
+        if (!hasLastPaintUv)
+        {
+            PaintAtUV(currentUv);
+            lastPaintUv = currentUv;
+            hasLastPaintUv = true;
+            return;
+        }
+
+        float distance = Vector2.Distance(lastPaintUv, currentUv);
+
+        int steps = Mathf.Max(1, Mathf.CeilToInt(distance / spacing));
+
+        for (int i = 1; i <= steps; i++)
+        {
+            float t = i / (float)steps;
+            Vector2 interpolatedUv = Vector2.Lerp(lastPaintUv, currentUv, t);
+            PaintAtUV(interpolatedUv);
+        }
+
+        lastPaintUv = currentUv;
     }
 
     private void PaintAtUV(Vector2 uv)
@@ -147,6 +192,7 @@ public class CanvasPainter : MonoBehaviour
 
         Graphics.Blit(canvasRT, temp);
 
+        stampMaterial.SetTexture("_MainTex", temp);
         stampMaterial.SetTexture(brushTextureProperty, brushStamp);
         stampMaterial.SetColor(brushColorProperty, brushColor);
         stampMaterial.SetVector(brushUvProperty, new Vector4(uv.x, uv.y, 0f, 0f));
@@ -183,6 +229,36 @@ public class CanvasPainter : MonoBehaviour
     public void Submit()
     {
         SubmitWithCustomFileName("final.png");
+    }
+
+    public string SubmitWithCustomFileName(string fileName)
+    {
+        Debug.Log($"[CanvasPainter] SubmitWithCustomFileName called: {fileName}");
+
+        if (sessionLogger == null)
+        {
+            Debug.LogError("[CanvasPainter] Cannot submit because SessionLogger is missing.");
+            return null;
+        }
+
+        if (canvasRT == null)
+        {
+            Debug.LogError("[CanvasPainter] Cannot submit because CanvasRT is missing.");
+            return null;
+        }
+
+        string savedPath = sessionLogger.SaveRenderTextureAsPng(canvasRT, fileName);
+
+        if (string.IsNullOrEmpty(savedPath))
+        {
+            Debug.LogError("[CanvasPainter] Submit failed.");
+        }
+        
+        Debug.Log($"[CanvasPainter] Saved: {savedPath}");
+        return savedPath;
+        
+
+        
     }
 
     private bool IsDrawPressed()
@@ -228,33 +304,5 @@ public class CanvasPainter : MonoBehaviour
     {
         if (actionReference != null && actionReference.action != null)
             actionReference.action.Disable();
-    }
-
-    public void SubmitWithCustomFileName(string fileName)
-    {
-        Debug.Log($"[CanvasPainter] SubmitWithCustomFileName called: {fileName}");
-
-        if (sessionLogger == null)
-        {
-            Debug.LogError("[CanvasPainter] Cannot submit because SessionLogger is missing.");
-            return;
-        }
-
-        if (canvasRT == null)
-        {
-            Debug.LogError("[CanvasPainter] Cannot submit because CanvasRT is missing.");
-            return;
-        }
-
-        string savedPath = sessionLogger.SaveRenderTextureAsPng(canvasRT, fileName);
-
-        if (string.IsNullOrEmpty(savedPath))
-        {
-            Debug.LogError("[CanvasPainter] Submit failed.");
-        }
-        else
-        {
-            Debug.Log($"[CanvasPainter] Saved: {savedPath}");
-        }
     }
 }
