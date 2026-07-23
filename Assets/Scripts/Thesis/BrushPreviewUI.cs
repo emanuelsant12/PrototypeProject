@@ -8,194 +8,102 @@ public class BrushPreviewUI : MonoBehaviour
     public RawImage previewImage;
 
     [Header("Preview Settings")]
-    public int textureWidth = 256;
-    public int textureHeight = 128;
-
-    [Tooltip("How much smaller the preview brush is compared to the real brush size.")]
-    public float previewScale = 1.5f;
-
-    [Header("Background")]
-    public Color backgroundColor = Color.white;
+    public int textureSize = 128;
+    public int maxBrushSizeForPreview = 60;
 
     private Texture2D previewTexture;
-    private int lastSize;
-    private float lastValue;
+
+    private int lastSize = -1;
+    private float lastValue = -1f;
     private bool lastEraser;
 
     private void Start()
     {
-        CreatePreviewTexture();
+        if (previewImage == null)
+            previewImage = GetComponent<RawImage>();
+
+        if (brushSettings == null)
+        {
+            Debug.LogError("[BrushPreviewUI] BrushSettings is missing.");
+            return;
+        }
+
+        if (previewImage == null)
+        {
+            Debug.LogError("[BrushPreviewUI] Preview RawImage is missing.");
+            return;
+        }
+
+        previewTexture = new Texture2D(textureSize, textureSize, TextureFormat.RGBA32, false);
+        previewTexture.wrapMode = TextureWrapMode.Clamp;
+        previewTexture.filterMode = FilterMode.Point;
+
+        previewImage.texture = previewTexture;
+
+        // Important: preview should not block slider/button clicks.
+        previewImage.raycastTarget = false;
+
         ForceRefresh();
     }
 
     private void Update()
     {
-        if (brushSettings == null)
+        if (brushSettings == null || previewImage == null)
             return;
 
-        if (HasBrushChanged())
+        if (brushSettings.sizePx != lastSize ||
+            Mathf.Abs(brushSettings.value - lastValue) > 0.001f ||
+            brushSettings.eraser != lastEraser)
         {
-            RefreshPreview();
+            ForceRefresh();
         }
-    }
-
-    private void CreatePreviewTexture()
-    {
-        previewTexture = new Texture2D(textureWidth, textureHeight, TextureFormat.RGBA32, false);
-        previewTexture.filterMode = FilterMode.Point;
-
-        if (previewImage != null)
-            previewImage.texture = previewTexture;
     }
 
     public void ForceRefresh()
     {
-        lastSize = -1;
-        lastValue = -1f;
-        lastEraser = !GetCurrentEraser();
-        RefreshPreview();
-    }
+        if (brushSettings == null || previewImage == null)
+            return;
 
-    private bool HasBrushChanged()
-    {
-        return lastSize != brushSettings.sizePx ||
-               !Mathf.Approximately(lastValue, brushSettings.value) ||
-               lastEraser != brushSettings.eraser;
-    }
+        Color background = new Color(0.85f, 0.85f, 0.85f, 1f);
 
-    private void RefreshPreview()
-    {
-        if (previewTexture == null)
-            CreatePreviewTexture();
+        for (int y = 0; y < textureSize; y++)
+        {
+            for (int x = 0; x < textureSize; x++)
+            {
+                previewTexture.SetPixel(x, y, background);
+            }
+        }
 
-        ClearTexture();
+        float value = brushSettings.eraser ? 1f : Mathf.Clamp01(brushSettings.value);
+        Color brushColor = new Color(value, value, value, 1f);
 
-        DrawPreviewStroke();
+        int previewRadius = Mathf.RoundToInt(
+            Mathf.Lerp(6f, textureSize * 0.42f, brushSettings.sizePx / (float)maxBrushSizeForPreview)
+        );
+
+        previewRadius = Mathf.Clamp(previewRadius, 4, textureSize / 2 - 4);
+
+        Vector2 center = new Vector2(textureSize / 2f, textureSize / 2f);
+
+        for (int y = 0; y < textureSize; y++)
+        {
+            for (int x = 0; x < textureSize; x++)
+            {
+                float distance = Vector2.Distance(new Vector2(x, y), center);
+
+                if (distance <= previewRadius)
+                {
+                    previewTexture.SetPixel(x, y, brushColor);
+                }
+            }
+        }
 
         previewTexture.Apply();
 
         lastSize = brushSettings.sizePx;
         lastValue = brushSettings.value;
         lastEraser = brushSettings.eraser;
-    }
 
-    private void ClearTexture()
-    {
-        Color32 bg = backgroundColor;
-
-        Color32[] pixels = new Color32[textureWidth * textureHeight];
-
-        for (int i = 0; i < pixels.Length; i++)
-            pixels[i] = bg;
-
-        previewTexture.SetPixels32(pixels);
-    }
-
-    private void DrawPreviewStroke()
-    {
-        if (brushSettings == null)
-            return;
-
-        Color brushColor = brushSettings.CurrentColor;
-
-        // If eraser is active, draw a grey outline so the player can see the eraser size.
-        bool isEraser = brushSettings.eraser;
-
-        int previewSize = Mathf.RoundToInt(brushSettings.sizePx / previewScale);
-        previewSize = Mathf.Clamp(previewSize, 4, 96);
-
-        Vector2 start = new Vector2(textureWidth * 0.25f, textureHeight * 0.5f);
-        Vector2 end = new Vector2(textureWidth * 0.75f, textureHeight * 0.5f);
-
-        int steps = 32;
-
-        for (int i = 0; i <= steps; i++)
-        {
-            float t = i / (float)steps;
-
-            Vector2 pos = Vector2.Lerp(start, end, t);
-
-            // Slight curve so it looks like a stroke, not just a boring straight line.
-            pos.y += Mathf.Sin(t * Mathf.PI) * 18f;
-
-            DrawCircle(
-                Mathf.RoundToInt(pos.x),
-                Mathf.RoundToInt(pos.y),
-                previewSize,
-                brushColor
-            );
-        }
-
-        if (isEraser)
-        {
-            DrawCircleOutline(
-                Mathf.RoundToInt(textureWidth * 0.5f),
-                Mathf.RoundToInt(textureHeight * 0.5f),
-                previewSize,
-                Color.gray
-            );
-        }
-    }
-
-    private void DrawCircle(int centerX, int centerY, int radius, Color color)
-    {
-        int radiusSquared = radius * radius;
-
-        for (int y = -radius; y <= radius; y++)
-        {
-            for (int x = -radius; x <= radius; x++)
-            {
-                int distanceSquared = x * x + y * y;
-
-                if (distanceSquared > radiusSquared)
-                    continue;
-
-                int px = centerX + x;
-                int py = centerY + y;
-
-                if (px < 0 || px >= textureWidth || py < 0 || py >= textureHeight)
-                    continue;
-
-                float distance = Mathf.Sqrt(distanceSquared);
-                float edgeFade = Mathf.Clamp01(1f - (distance / radius));
-
-                // Soft edge, otherwise the preview looks ugly and fake.
-                float alpha = Mathf.SmoothStep(0f, 1f, edgeFade);
-
-                Color existing = previewTexture.GetPixel(px, py);
-                Color blended = Color.Lerp(existing, color, alpha);
-
-                previewTexture.SetPixel(px, py, blended);
-            }
-        }
-    }
-
-    private void DrawCircleOutline(int centerX, int centerY, int radius, Color color)
-    {
-        int thickness = 2;
-
-        for (int y = -radius - thickness; y <= radius + thickness; y++)
-        {
-            for (int x = -radius - thickness; x <= radius + thickness; x++)
-            {
-                float distance = Mathf.Sqrt(x * x + y * y);
-
-                if (distance < radius - thickness || distance > radius + thickness)
-                    continue;
-
-                int px = centerX + x;
-                int py = centerY + y;
-
-                if (px < 0 || px >= textureWidth || py < 0 || py >= textureHeight)
-                    continue;
-
-                previewTexture.SetPixel(px, py, color);
-            }
-        }
-    }
-
-    private bool GetCurrentEraser()
-    {
-        return brushSettings != null && brushSettings.eraser;
+        Debug.Log("[BrushPreviewUI] Preview updated.");
     }
 }

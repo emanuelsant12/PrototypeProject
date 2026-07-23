@@ -63,14 +63,14 @@ public class CanvasPainter : MonoBehaviour
         if (canvasRT != null && !canvasRT.IsCreated())
             canvasRT.Create();
 
-        ClearCanvasToWhite();
+        ClearCanvas();
     }
 
     private void Update()
     {
         if (WasResetPressed())
         {
-            ClearCanvasToWhite();
+            ClearCanvas();
         }
 
         if (WasSubmitPressed())
@@ -203,27 +203,28 @@ public class CanvasPainter : MonoBehaviour
         RenderTexture.ReleaseTemporary(temp);
     }
 
-    public void ClearCanvasToWhite()
+    public void ClearCanvas()
     {
         if (canvasRT == null)
+        {
+            Debug.LogError("[CanvasPainter] Cannot clear. CanvasRT is missing.");
             return;
+        }
 
         RenderTexture previous = RenderTexture.active;
 
-        if (!canvasRT.IsCreated())
-            canvasRT.Create();
-
         RenderTexture.active = canvasRT;
         GL.Clear(true, true, Color.white);
+
         RenderTexture.active = previous;
 
         hasLastLoggedUv = false;
+        hasLastPaintUv = false;
 
         if (sessionLogger != null)
             sessionLogger.LogCanvasCleared();
 
-        if (debugLogs)
-            Debug.Log("[CanvasPainter] Canvas cleared to white.");
+        Debug.Log("[CanvasPainter] Canvas cleared.");
     }
 
     public void Submit()

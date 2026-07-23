@@ -1,0 +1,3 @@
+{"type":"session_started","time":2.663355588912964,"utc":"2026-07-22T21:49:25.5930145Z","participantId":"P010","condition":"baseline","sessionFolder":"C:/Users/Emanuel/AppData/LocalLow/DefaultCompany/XRTest3\\StudyData\\P010_baseline_20260722_234925","platform":"WindowsEditor"}
+{"type":"task_started","time":2.663355588912964,"taskName":"Shading Sphere","taskType":"Shading","gamifiedVisible":false}
+{"type":"canvas_cleared","time":2.663355588912964}

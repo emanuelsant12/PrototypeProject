@@ -19,6 +19,9 @@ public class ParticipantIdManager : MonoBehaviour
         GenerateNewParticipantId();
     }
 
+    // Generates a new participant ID based on the current counter and updates PlayerPrefs.
+
+
     private void GenerateNewParticipantId()
     {
         int nextNumber = PlayerPrefs.GetInt(CounterKey, 1);

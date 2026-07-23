@@ -29,7 +29,7 @@ public class VRPaintButtonActions : MonoBehaviour
             return;
         }
 
-        canvasPainter.ClearCanvasToWhite();
+        canvasPainter.ClearCanvas();
     }
 
     public void SubmitPainting()

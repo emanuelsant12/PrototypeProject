@@ -289,7 +289,7 @@ public class StudyFlowManager : MonoBehaviour
         }
 
         if (canvasPainter != null)
-            canvasPainter.ClearCanvasToWhite();
+            canvasPainter.ClearCanvas();
 
         SetPanel(drawingToolsPanel, true);
         SetPanel(gamifiedHudPanel, gamified);
