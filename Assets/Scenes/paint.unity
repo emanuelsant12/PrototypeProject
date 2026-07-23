@@ -325,7 +325,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: -0.0000036347, y: -0.005}
-  m_SizeDelta: {x: 779, y: 447.988}
+  m_SizeDelta: {x: 807.86, y: 770.5}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &117180859
 MonoBehaviour:
@@ -8993,25 +8993,35 @@ MonoBehaviour:
 
 
 
-    How to draw:
+    How to use the controls:
 
-    Point the brush/controller at the white
-    canvas.
+    Point at a UI button, dropdown,
+    or slider.
 
-    Hold the trigger to draw.
+    Press the trigger to select it.
 
-    Use the tool buttons to change brush
-    value, size, or eraser mode.
-
-    Use the reference image on the left as your
-    guide.
-
-    Press Submit when you are finished with each task.
+    Hold the trigger on the
+    white canvas to draw.
 
 
+    Use the sliders to change:
 
-    Try to
-    match the reference image as accurately as possible.'
+    Brush shade
+
+    Brush
+    size
+
+
+    Use the dropdown to switch between:
+
+    Brush
+
+    Eraser
+
+
+
+    Try
+    to match the reference image as accurately as possible.'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}

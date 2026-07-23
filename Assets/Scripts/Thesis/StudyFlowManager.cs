@@ -76,12 +76,14 @@ public class StudyFlowManager : MonoBehaviour
                 "You will complete two drawing tasks:\n" +
                 "1. Shading\n" +
                 "2. Perspective\n\n" +
-                "How to draw:\n" +
-                "Point at the white canvas.\n" +
-                "Hold the trigger to draw.\n" +
-                "Poke/Use the buttons to change brush size, value, or eraser.\n\n" +
+                "Controls:\n" +
+                "Point at a button, dropdown, or slider.\n" +
+                "Press the trigger to select it.\n" +
+                "Hold the trigger on the white canvas to draw.\n\n" +
+                "Use the sliders to change brush shade and size.\n" +
+                "Use the dropdown to switch between brush and eraser.\n\n" +
                 "Use the reference image as your guide.\n\n" +
-                "Press Start when ready.";
+                "Press this panel when ready.";
         }
 
         Debug.Log("[StudyFlowManager] Baseline intro opened.");
@@ -129,15 +131,18 @@ public class StudyFlowManager : MonoBehaviour
         {
             gamifiedInstructionText.text =
                 "Gamified Task\n\n" +
-                "You will complete the same two tasks again:\n" +
+                "You will complete the same two drawing tasks again:\n" +
                 "1. Shading\n" +
                 "2. Perspective\n\n" +
-                "This version gives score, progress, and feedback.\n\n" +
-                "How to draw:\n" +
-                "Point at the white canvas.\n" +
-                "Hold the trigger to draw.\n" +
-                "Poke/Use the buttons to change brush size, value, or eraser.\n\n" +
-                "Press Start when ready.";
+                "This version shows score, progress, and feedback.\n\n" +
+                "Controls:\n" +
+                "Point at a button, dropdown, or slider.\n" +
+                "Press the trigger to select it.\n" +
+                "Hold the trigger on the white canvas to draw.\n\n" +
+                "Use the sliders to change brush shade and size.\n" +
+                "Use the dropdown to switch between brush and eraser.\n\n" +
+                "Feedback updates after each completed brush stroke.\n\n" +
+                "Press this panel when ready.";
         }
 
         Debug.Log("[StudyFlowManager] Gamified intro opened.");

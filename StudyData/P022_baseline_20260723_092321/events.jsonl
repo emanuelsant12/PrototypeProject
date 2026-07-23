@@ -1,0 +1,9 @@
+{"type":"session_started","time":2.941781997680664,"utc":"2026-07-23T07:23:21.2698023Z","participantId":"P022","condition":"baseline","sessionFolder":"C:/Users/Emanuel/AppData/LocalLow/DefaultCompany/XRTest3\\StudyData\\P022_baseline_20260723_092321","platform":"WindowsEditor"}
+{"type":"task_started","time":2.941781997680664,"taskName":"Shading Sphere","taskType":"Shading","gamifiedVisible":false}
+{"type":"canvas_cleared","time":2.941781997680664}
+{"type":"submitted","time":7.7117156982421879,"pngPath":"C:/Users/Emanuel/AppData/LocalLow/DefaultCompany/XRTest3\\StudyData\\P022_baseline_20260723_092321\\shading.png"}
+{"type":"task_submitted","time":7.7117156982421879,"taskName":"Shading Sphere","taskType":"Shading","condition":"Baseline","gamifiedVisible":false,"taskElapsedSeconds":4.769933700561523,"totalStrokePoints":0,"excellentPoints":0,"goodPoints":0,"okayPoints":0,"inaccuratePoints":0,"score":0,"progressPercent":0.0,"savedImagePath":"C:/Users/Emanuel/AppData/LocalLow/DefaultCompany/XRTest3\\StudyData\\P022_baseline_20260723_092321\\shading.png"}
+{"type":"task_started","time":10.713223457336426,"taskName":"One-Point Perspective","taskType":"Perspective","gamifiedVisible":false}
+{"type":"canvas_cleared","time":10.713223457336426}
+{"type":"submitted","time":11.232453346252442,"pngPath":"C:/Users/Emanuel/AppData/LocalLow/DefaultCompany/XRTest3\\StudyData\\P022_baseline_20260723_092321\\perspective.png"}
+{"type":"task_submitted","time":11.232453346252442,"taskName":"One-Point Perspective","taskType":"Perspective","condition":"Baseline","gamifiedVisible":false,"taskElapsedSeconds":0.5192298889160156,"totalStrokePoints":0,"excellentPoints":0,"goodPoints":0,"okayPoints":0,"inaccuratePoints":0,"score":0,"progressPercent":0.0,"savedImagePath":"C:/Users/Emanuel/AppData/LocalLow/DefaultCompany/XRTest3\\StudyData\\P022_baseline_20260723_092321\\perspective.png"}
