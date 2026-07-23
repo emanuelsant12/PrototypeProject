@@ -35,6 +35,8 @@ public class ParticipantIdManager : MonoBehaviour
             participantIdText.text = $"Participant ID: {CurrentParticipantId}";
 
         Debug.Log($"[ParticipantIdManager] Generated participant ID: {CurrentParticipantId}");
+
+      
     }
 
     [ContextMenu("Reset Participant Counter")]

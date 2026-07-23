@@ -41,15 +41,13 @@ public class SessionLogger : MonoBehaviour
     [SerializeField] private string projectCopySessionFolder;
     [SerializeField] private string projectCopyEventsPath;
 
+
     public string ActiveSessionFolder => activeSessionFolder;
     public string EventsPath => eventsPath;
 
     private bool sessionStarted;
 
-    private void Awake()
-    {
-        StartSession();
-    }
+    
 
     public void StartSession()
     {
@@ -104,12 +102,16 @@ public class SessionLogger : MonoBehaviour
 
     public void StartNewSession(string newParticipantId, string newCondition)
     {
-        participantId = newParticipantId;
-        condition = newCondition;
+        participantId = SanitizeFileName(newParticipantId);
+        condition = SanitizeFileName(newCondition);
 
         sessionStarted = false;
+
         activeSessionFolder = "";
         eventsPath = "";
+
+        projectCopySessionFolder = "";
+        projectCopyEventsPath = "";
 
         StartSession();
     }

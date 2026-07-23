@@ -43,9 +43,11 @@ public class StudyFlowManager : MonoBehaviour
 
     [Header("Participant ID")]
     public ParticipantIdManager participantIdManager;
-
+    private string activeParticipantId;
     private int currentTaskIndex = 0;
     private bool isTransitioning = false;
+
+   
 
     private float currentTaskStartTime;
 
@@ -98,7 +100,7 @@ public class StudyFlowManager : MonoBehaviour
         currentTaskIndex = 0;
 
         if (sessionLogger != null)
-            sessionLogger.StartNewSession(GetParticipantId(), "baseline");
+            sessionLogger.StartNewSession(GetParticipantIdForThisRun(), "baseline");
 
         SetPanel(baselineInstructionsPanel, false);
         SetPanel(gamifiedInstructionsPanel, false);
@@ -157,7 +159,7 @@ public class StudyFlowManager : MonoBehaviour
         currentTaskIndex = 0;
 
         if (sessionLogger != null)
-            sessionLogger.StartNewSession(participantId, "gamified");
+            sessionLogger.StartNewSession(GetParticipantIdForThisRun(), "gamified");
 
         SetPanel(baselineInstructionsPanel, false);
         SetPanel(gamifiedInstructionsPanel, false);
@@ -386,5 +388,22 @@ public class StudyFlowManager : MonoBehaviour
             referenceScoringManager.GetProgressPercent(),
             savedPath
         );
+    }
+
+    private string GetParticipantIdForThisRun()
+    {
+        if (!string.IsNullOrEmpty(activeParticipantId))
+            return activeParticipantId;
+
+        if (participantIdManager != null &&
+            !string.IsNullOrEmpty(participantIdManager.CurrentParticipantId))
+        {
+            activeParticipantId = participantIdManager.CurrentParticipantId;
+            return activeParticipantId;
+        }
+
+        activeParticipantId = "P_UNKNOWN";
+        Debug.LogWarning("[StudyFlowManager] ParticipantIdManager missing. Using P_UNKNOWN.");
+        return activeParticipantId;
     }
 }

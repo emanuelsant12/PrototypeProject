@@ -3,6 +3,7 @@ using UnityEngine.InputSystem;
 
 public class CanvasPainter_Input : CanvasPainter
 {
+    /*
     [Header("Input")]
     public InputActionReference drawAction; // bind to RightHand Activate/Select
 
@@ -15,7 +16,7 @@ public class CanvasPainter_Input : CanvasPainter
     {
         if (drawAction != null) drawAction.action.Disable();
     }
-    /*
+    
     new void Update()
     {
         bool pressed = drawAction != null && drawAction.action.ReadValue<float>() > 0.5f;
