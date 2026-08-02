@@ -49,18 +49,24 @@ public class StudyFlowManager : MonoBehaviour
 
    
 
+
+
     private float currentTaskStartTime;
 
     private void Start()
     {
         StartBaselineIntro();
+        
     }
 
     public void StartBaselineIntro()
     {
+
         isTransitioning = false;
         currentPhase = StudyPhase.Baseline;
         currentTaskIndex = 0;
+
+        SetTaskInputActive(false);
 
         SetPanel(baselineInstructionsPanel, true);
         SetPanel(gamifiedInstructionsPanel, false);
@@ -85,7 +91,7 @@ public class StudyFlowManager : MonoBehaviour
                 "Use the sliders to change brush shade and size.\n" +
                 "Use the dropdown to switch between brush and eraser.\n\n" +
                 "Use the reference image as your guide.\n\n" +
-                "Press this panel when ready.";
+                "Point at this panel and press the trigger when ready.";
         }
 
         Debug.Log("[StudyFlowManager] Baseline intro opened.");
@@ -120,6 +126,8 @@ public class StudyFlowManager : MonoBehaviour
         currentPhase = StudyPhase.Gamified;
         currentTaskIndex = 0;
 
+        SetTaskInputActive(false);
+
         SetPanel(baselineInstructionsPanel, false);
         SetPanel(gamifiedInstructionsPanel, true);
         SetPanel(drawingToolsPanel, false);
@@ -144,7 +152,7 @@ public class StudyFlowManager : MonoBehaviour
                 "Use the sliders to change brush shade and size.\n" +
                 "Use the dropdown to switch between brush and eraser.\n\n" +
                 "Feedback updates after each completed brush stroke.\n\n" +
-                "Press this panel when ready.";
+                "Point at this panel and press the trigger when ready.";
         }
 
         Debug.Log("[StudyFlowManager] Gamified intro opened.");
@@ -201,6 +209,10 @@ public class StudyFlowManager : MonoBehaviour
 
         LogCurrentTaskSummary(savedPath);
 
+        SetTaskInputActive(false);
+
+        SetPanel(drawingToolsPanel, false);
+        SetPanel(gamifiedHudPanel, false);
         SetPanel(transitionPanel, true);
 
         if (transitionText != null)
@@ -254,6 +266,9 @@ public class StudyFlowManager : MonoBehaviour
 
     private void StartCurrentTask(bool gamified)
     {
+
+        SetTaskInputActive(true);
+
         currentTaskStartTime = Time.time;
 
         ReferenceTaskData task = GetCurrentTask();
@@ -314,6 +329,9 @@ public class StudyFlowManager : MonoBehaviour
 
     private void FinishStudy()
     {
+
+        SetTaskInputActive(false);
+
         currentPhase = StudyPhase.Complete;
 
         SetPanel(baselineInstructionsPanel, false);
@@ -405,5 +423,11 @@ public class StudyFlowManager : MonoBehaviour
         activeParticipantId = "P_UNKNOWN";
         Debug.LogWarning("[StudyFlowManager] ParticipantIdManager missing. Using P_UNKNOWN.");
         return activeParticipantId;
+    }
+
+    private void SetTaskInputActive(bool active)
+    {
+        if (canvasPainter != null)
+            canvasPainter.inputEnabled = active;
     }
 }

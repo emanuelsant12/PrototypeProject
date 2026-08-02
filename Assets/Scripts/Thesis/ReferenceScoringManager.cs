@@ -39,6 +39,32 @@ public class ReferenceScoringManager : MonoBehaviour
     [Header("Logging")]
     public SessionLogger sessionLogger;
 
+    [Header("Dynamic Feedback Settings")]
+    [Tooltip("Minimum stroke points needed before feedback is shown.")]
+    public int minStrokePointsForFeedback = 3;
+
+    [Tooltip("How many good/excellent points are needed before praising a stroke.")]
+    public int goodStrokePointThreshold = 3;
+
+    [Tooltip("Average value difference needed before saying the stroke is too dark or too light.")]
+    [Range(0.05f, 0.5f)]
+    public float shadingValueDifferenceThreshold = 0.15f;
+
+    [Tooltip("If this percentage of a shading stroke hits the white background, warn the user.")]
+    [Range(0.1f, 1f)]
+    public float backgroundWarningPercent = 0.60f;
+
+    [Tooltip("Progress below this is treated as early task progress.")]
+    [Range(0f, 1f)]
+    public float lowProgressThreshold = 0.25f;
+
+    [Tooltip("Progress below this is treated as middle task progress.")]
+    [Range(0f, 1f)]
+    public float midProgressThreshold = 0.65f;
+
+    [Tooltip("Stops the exact same feedback message from repeating immediately.")]
+    public bool avoidRepeatingSameFeedback = true;
+
     private HashSet<int> relevantReferenceCells = new HashSet<int>();
     private HashSet<int> completedCorrectCells = new HashSet<int>();
 
@@ -50,6 +76,15 @@ public class ReferenceScoringManager : MonoBehaviour
     private int currentStrokeInaccurate;
     private int currentStrokeOffGuide;
     private int currentStrokePoints;
+
+    private float currentStrokeReferenceValueTotal;
+    private float currentStrokeBrushValueTotal;
+    private int currentStrokeValueSamples;
+
+    private int currentStrokeBackgroundHits;
+    private int currentStrokeRelevantHits;
+
+    private string lastFeedbackMessage = "";
 
     public void StartTask(ReferenceTaskData task, bool showUI)
     {
@@ -363,16 +398,19 @@ public class ReferenceScoringManager : MonoBehaviour
         {
             case "excellent":
                 currentStrokeExcellent++;
+                currentStrokeRelevantHits++;
                 break;
 
             case "good":
             case "on_perspective_guide":
                 currentStrokeGood++;
+                currentStrokeRelevantHits++;
                 break;
 
             case "okay":
             case "near_perspective_guide":
                 currentStrokeOkay++;
+                currentStrokeRelevantHits++;
                 break;
 
             case "inaccurate":
@@ -382,6 +420,16 @@ public class ReferenceScoringManager : MonoBehaviour
             case "off_guide":
                 currentStrokeOffGuide++;
                 break;
+        }
+
+        if (currentTask != null && currentTask.taskType == TaskType.Shading)
+        {
+            currentStrokeReferenceValueTotal += result.referenceValue;
+            currentStrokeBrushValueTotal += result.brushValue;
+            currentStrokeValueSamples++;
+
+            if (result.referenceValue >= shadingRelevantValueThreshold)
+                currentStrokeBackgroundHits++;
         }
     }
 
@@ -416,78 +464,137 @@ public class ReferenceScoringManager : MonoBehaviour
 
         float progress01 = GetProgress01();
 
-        if (currentStrokeExcellent >= 3)
+        float averageReferenceValue = 0f;
+        float averageBrushValue = 0f;
+
+        if (currentStrokeValueSamples > 0)
         {
-            feedbackText.text = PickRandom(
-                "Strong value matching. Now focus on smoothing the transition between tones.",
-                "Good accuracy. Try blending the edges so the shading feels less patchy.",
-                "You are matching the reference well. Refine the softer areas next.",
-                "Good value control. Keep building the form gradually instead of pressing too dark too quickly."
-            );
+            averageReferenceValue = currentStrokeReferenceValueTotal / currentStrokeValueSamples;
+            averageBrushValue = currentStrokeBrushValueTotal / currentStrokeValueSamples;
         }
-        else if (currentStrokeGood >= 3)
+
+        float valueDifference = averageBrushValue - averageReferenceValue;
+
+        float backgroundRatio = currentStrokePoints > 0
+        ? currentStrokeBackgroundHits / (float)currentStrokePoints
+        : 0f;
+
+        float goodRatio = currentStrokePoints > 0
+            ? (currentStrokeExcellent + currentStrokeGood) / (float)currentStrokePoints
+            : 0f;
+
+        float weakRatio = currentStrokePoints > 0
+            ? currentStrokeInaccurate / (float)currentStrokePoints
+            : 0f;
+
+        if (currentStrokePoints < minStrokePointsForFeedback)
         {
-            feedbackText.text = PickRandom(
-                "Good progress. Try using slightly smaller strokes to control the gradient.",
-                "Your values are close. Focus on making the shadow flow smoothly into the mid-tone.",
-                "Good match overall. Look at where the reference changes from light to dark and copy that transition.",
-                "You are close to the correct values. Keep adjusting the brush darkness as the reference changes."
-            );
+            SetFeedbackSmart(PickRandom(
+                "Make a slightly longer stroke so the system can give useful feedback.",
+                "Try drawing a longer mark before checking the feedback.",
+                "Use a more complete stroke so the system can compare it properly."
+            ));
+            return;
         }
-        else if (currentStrokeOkay >= 3)
+
+        if (backgroundRatio >= backgroundWarningPercent)
         {
-            feedbackText.text = PickRandom(
-                "You are close, but compare the brush darkness with the reference before drawing more.",
-                "The value is nearly there. Try making small adjustments instead of large dark strokes.",
-                "Close attempt. Use lighter strokes first, then build darker areas gradually.",
-                "Your marks are in the right area, but the tone needs more control."
-            );
+            SetFeedbackSmart(PickRandom(
+                "Most of this stroke is on the white background. Focus on the sphere and cast shadow.",
+                "You are drawing mostly outside the shaded area. Aim for the sphere or shadow.",
+                "Move closer to the reference shape. The white background does not count much toward progress."
+            ));
+            return;
         }
-        else if (currentStrokeInaccurate >= 3)
+
+        if (currentStrokeExcellent >= goodStrokePointThreshold)
         {
-            feedbackText.text = PickRandom(
-                "Try adjusting the brush lighter or darker to better match the reference.",
-                "Check the reference before continuing. Your current value does not match this area well.",
-                "Slow down and compare the area you are painting with the reference value.",
-                "Use the Lighten and Darken buttons before continuing. The brush value needs adjusting.",
-                "Avoid filling large areas with one value. The reference uses gradual changes."
-            );
+            SetFeedbackSmart(PickRandom(
+                "Strong value match. Now smooth the transition between dark and light areas.",
+                "This stroke matches the reference well. Continue refining nearby tones.",
+                "Good accuracy. Keep building the shading gradually instead of overworking one area.",
+                "Nice value control. Now focus on making the sphere feel smoother and rounder."
+            ));
+            return;
         }
-        else if (progress01 < 0.20f)
+
+        if (currentStrokeGood >= goodStrokePointThreshold)
         {
-            feedbackText.text = PickRandom(
-                "Start by blocking in the main shadow and mid-tone areas.",
-                "Focus first on the largest shaded area of the sphere.",
-                "Begin with the main form shadow before adding small details.",
-                "Try covering the important shaded areas before refining texture."
-            );
+            SetFeedbackSmart(PickRandom(
+                "Good value match. Try using smaller strokes for smoother blending.",
+                "You are close to the reference. Refine the edges of the shaded area.",
+                "Good progress. Keep adjusting the brush shade as the reference changes.",
+                "The value is close. Now try to make the transition less patchy."
+            ));
+            return;
         }
-        else if (progress01 < 0.50f)
+
+        if (valueDifference < -shadingValueDifferenceThreshold)
         {
-            feedbackText.text = PickRandom(
-                "Good start. Add more controlled strokes around the main shaded areas.",
-                "You have started covering the form. Now build the mid-tones more carefully.",
-                "Keep going. Try to connect the shadow areas instead of leaving isolated marks.",
-                "Focus on the transition between the dark shadow and the lighter side."
-            );
+            SetFeedbackSmart(PickRandom(
+                "Your stroke is too dark for this area. Move the shade slider lighter.",
+                "This part of the reference is lighter than your brush. Use a lighter value.",
+                "Try reducing the darkness. Build the shadow gradually instead of going too dark.",
+                "The brush value is too strong here. Lighten it and blend into the mid-tone."
+            ));
+            return;
         }
-        else if (progress01 < 0.80f)
+
+        if (valueDifference > shadingValueDifferenceThreshold)
         {
-            feedbackText.text = PickRandom(
-                "You are covering the important areas. Refine the edges and transitions.",
-                "Good coverage. Now smooth the patchy areas and avoid unnecessary marks.",
-                "The main shading is forming. Use lighter values to soften harsh edges.",
-                "Try to make the sphere feel rounded by blending from dark to light."
-            );
+            SetFeedbackSmart(PickRandom(
+                "Your stroke is too light for this area. Move the shade slider darker.",
+                "The reference is darker here. Use a darker brush value.",
+                "Try darkening the brush before continuing in this shadow area.",
+                "This area needs a stronger value. Move the shade slider darker."
+            ));
+            return;
+        }
+
+        if (currentStrokeOkay >= goodStrokePointThreshold)
+        {
+            SetFeedbackSmart(PickRandom(
+                "The value is close, but needs more control. Use shorter strokes and compare with the reference.",
+                "You are near the correct tone. Adjust the shade slightly before adding more.",
+                "Close attempt. Focus on smoother transitions between the tones.",
+                "This is nearly correct. Slow down and blend the value more carefully."
+            ));
+            return;
+        }
+
+        if (weakRatio > 0.7f)
+        {
+            SetFeedbackSmart(PickRandom(
+                "This stroke does not match the reference well. Check the shade before continuing.",
+                "Try comparing the area under your brush with the same area on the reference.",
+                "The mark is not helping the form yet. Adjust the shade and aim for a relevant area."
+            ));
+            return;
+        }
+
+        if (progress01 < lowProgressThreshold)
+        {
+            SetFeedbackSmart(PickRandom(
+                "Start by covering the main shadow and mid-tone areas of the sphere.",
+                "Begin with the largest shaded areas before refining details.",
+                "Focus first on the main form shadow, then build lighter tones around it."
+            ));
+        }
+        else if (progress01 < midProgressThreshold)
+        {
+            SetFeedbackSmart(PickRandom(
+                "Good start. Add more controlled shading where the reference is darker.",
+                "You have covered some key areas. Now connect the tones more smoothly.",
+                "Keep building the sphere shape by blending from dark to light."
+            ));
         }
         else
         {
-            feedbackText.text = PickRandom(
-                "Strong progress. Spend the remaining time refining smoothness and accuracy.",
-                "Good completion. Now polish the transitions and clean any rough marks.",
-                "The main task is mostly covered. Focus on improving the gradient quality.",
-                "You have covered the key areas. Refine the shading so it looks less noisy."
-            );
+            SetFeedbackSmart(PickRandom(
+                "Most key areas are covered. Now refine smoothness and clean rough marks.",
+                "You have good coverage. Focus on polishing the gradient.",
+                "The main shading is complete. Use small adjustments to improve the final result."
+            ));
         }
     }
 
@@ -498,79 +605,85 @@ public class ReferenceScoringManager : MonoBehaviour
 
         float progress01 = GetProgress01();
 
-        if (currentStrokeGood >= 3)
+        float goodRatio = currentStrokePoints > 0
+       ? currentStrokeGood / (float)currentStrokePoints
+       : 0f;
+
+        float nearRatio = currentStrokePoints > 0
+            ? currentStrokeOkay / (float)currentStrokePoints
+            : 0f;
+
+        float offGuideRatio = currentStrokePoints > 0
+            ? currentStrokeOffGuide / (float)currentStrokePoints
+            : 0f;
+
+        if (currentStrokePoints < minStrokePointsForFeedback)
         {
-            SetFeedback(PickRandom(
-                "Good alignment. Keep following the perspective guide lines.",
-                "Your strokes are lining up well. Continue building the main structure.",
-                "Good direction. Keep aiming your lines toward the vanishing point.",
-                "The perspective structure is becoming clearer. Keep the lines consistent."
+            SetFeedbackSmart(PickRandom(
+                "Make a longer line so the system can check the perspective direction.",
+                "Try drawing a more complete line toward the vanishing point.",
+                "Use a longer stroke so the system can judge the alignment properly."
             ));
+            return;
         }
-        else if (currentStrokeOkay >= 3)
+
+        if (currentStrokeGood >= goodStrokePointThreshold || goodRatio >= 0.6f)
         {
-            SetFeedback(PickRandom(
-                "Close. Try keeping your strokes more directly on the guide lines.",
-                "You are near the correct direction. Adjust slightly toward the reference lines.",
-                "Your line is close, but it is drifting. Re-align it with the vanishing point.",
-                "Almost there. Use slower strokes to keep the line straighter."
+            SetFeedbackSmart(PickRandom(
+                "Good alignment. Keep following the guide lines toward the vanishing point.",
+                "This line is following the perspective structure well.",
+                "Good stroke. Continue adding lines that converge toward the same point.",
+                "Your line direction is strong. Keep the next lines consistent."
             ));
+            return;
         }
-        else if (currentStrokeOffGuide >= 3)
+
+        if (currentStrokeOkay >= goodStrokePointThreshold || nearRatio >= 0.5f)
         {
-            SetFeedback(PickRandom(
-                "Your strokes are drifting away from the perspective structure. Aim toward the guide lines.",
-                "Check the reference before drawing more. Your lines should converge toward the vanishing point.",
+            SetFeedbackSmart(PickRandom(
+                "Close. Your line is near the guide, but try keeping it straighter.",
+                "You are close to the correct guide line. Slow down and aim toward the vanishing point.",
+                "Almost aligned. Adjust the direction slightly so the line follows the reference.",
+                "This line is near the structure. Try to place it more directly on the guide."
+            ));
+            return;
+        }
+
+        if (currentStrokeOffGuide >= goodStrokePointThreshold || offGuideRatio >= 0.6f)
+        {
+            SetFeedbackSmart(PickRandom(
+                "This line is away from the perspective guide. Aim it toward the vanishing point.",
+                "Your stroke is drifting from the structure. Use the reference lines as a guide.",
                 "Try starting from the edge and drawing toward the centre vanishing point.",
-                "Avoid random lines. Perspective lines need to follow the same direction.",
-                "Use the reference as a guide. The important lines should meet near the same point."
+                "Avoid random lines. Perspective lines should converge toward the same point."
             ));
+            return;
         }
-        else if (progress01 < 0.20f)
+
+        if (progress01 < lowProgressThreshold)
         {
-            SetFeedback(PickRandom(
+            SetFeedbackSmart(PickRandom(
                 "Start with the main lines that lead toward the vanishing point.",
-                "Begin by drawing the largest perspective edges first.",
-                "Focus on the horizon and the main converging lines before adding details.",
-                "Draw fewer lines, but make sure they aim toward the centre point."
+                "Begin with the biggest edges first, then add smaller details.",
+                "Focus on the horizon and the main converging lines."
             ));
         }
-        else if (progress01 < 0.50f)
+        else if (progress01 < midProgressThreshold)
         {
-            SetFeedback(PickRandom(
-                "Good start. Add the remaining edges that converge toward the centre.",
-                "The structure is starting to form. Keep the next lines aligned with the same vanishing point.",
-                "Continue adding the main wall, floor, or ceiling edges.",
-                "Try to keep spacing consistent as the lines move toward the distance."
-            ));
-        }
-        else if (progress01 < 0.80f)
-        {
-            SetFeedback(PickRandom(
-                "The structure is forming. Refine the lines and keep them consistent.",
-                "Good coverage. Now clean up any lines that do not point toward the vanishing point.",
-                "Most of the guide structure is present. Focus on straightness and alignment.",
-                "Refine the perspective by making the major lines clearer and less shaky."
+            SetFeedbackSmart(PickRandom(
+                "The structure is forming. Add the remaining converging lines.",
+                "Good start. Keep the next lines aiming toward the same point.",
+                "Continue building the main wall, floor, or object edges."
             ));
         }
         else
         {
-            SetFeedback(PickRandom(
-                "Strong progress. Use the remaining time to clean and straighten the main lines.",
-                "The perspective layout is mostly complete. Refine accuracy and remove messy areas if needed.",
-                "Good completion. Focus on making the final structure clearer and more readable.",
-                "You have covered the important perspective areas. Now polish line quality."
+            SetFeedbackSmart(PickRandom(
+                "Most guide areas are covered. Refine line straightness and remove messy marks.",
+                "The perspective layout is mostly complete. Clean up the main lines.",
+                "Good coverage. Now focus on making the structure clear and readable."
             ));
         }
-    }
-
-    private void ResetRecentFeedbackCounters()
-    {
-        currentStrokeExcellent = 0;
-        currentStrokeGood = 0;
-        currentStrokeOkay = 0;
-        currentStrokeInaccurate = 0;
-        currentStrokeOffGuide = 0;
     }
 
     private void RefreshUI()
@@ -606,18 +719,6 @@ public class ReferenceScoringManager : MonoBehaviour
         return y * progressGridSize + x;
     }
 
-    public void  Stroke()
-    {
-        if (!showGamifiedUI)
-            return;
-
-        if (currentStrokePoints <= 0)
-            return;
-
-        UpdateConstructiveFeedback();
-        ResetCurrentStrokeFeedbackCounters();
-    }
-
     public void ResetCurrentStrokeFeedbackCounters()
     {
         currentStrokeExcellent = 0;
@@ -626,6 +727,13 @@ public class ReferenceScoringManager : MonoBehaviour
         currentStrokeInaccurate = 0;
         currentStrokeOffGuide = 0;
         currentStrokePoints = 0;
+
+        currentStrokeReferenceValueTotal = 0f;
+        currentStrokeBrushValueTotal = 0f;
+        currentStrokeValueSamples = 0;
+
+        currentStrokeBackgroundHits = 0;
+        currentStrokeRelevantHits = 0;
     }
 
     public void EndCurrentBrushStroke()
@@ -658,6 +766,22 @@ public class ReferenceScoringManager : MonoBehaviour
                 message
             );
         }
+    }
+
+    private void SetFeedbackSmart(string message)
+    {
+        if (avoidRepeatingSameFeedback && message == lastFeedbackMessage)
+        {
+            message = AddSmallVariation(message);
+        }
+
+        lastFeedbackMessage = message;
+        SetFeedback(message);
+    }
+
+    private string AddSmallVariation(string message)
+    {
+        return message + "\nTry one careful stroke at a time.";
     }
 }
 

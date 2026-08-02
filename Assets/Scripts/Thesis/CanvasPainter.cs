@@ -37,6 +37,9 @@ public class CanvasPainter : MonoBehaviour
     [Header("Debug")]
     public bool debugLogs = false;
 
+    [Header("Input Lock")]
+    public bool inputEnabled = false;
+
     private Vector2 lastLoggedUv;
     private bool hasLastLoggedUv;
 
@@ -68,6 +71,15 @@ public class CanvasPainter : MonoBehaviour
 
     private void Update()
     {
+
+        if (!inputEnabled)
+        {
+            hasLastLoggedUv = false;
+            hasLastPaintUv = false;
+            wasDrawingLastFrame = false;
+            return;
+        }
+
         if (WasResetPressed())
         {
             ClearCanvas();

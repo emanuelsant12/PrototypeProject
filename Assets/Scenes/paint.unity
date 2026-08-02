@@ -5602,6 +5602,7 @@ MonoBehaviour:
   brushSizeProperty: _BrushSize
   minLogDistanceUV: 0.0025
   debugLogs: 0
+  inputEnabled: 0
 --- !u!114 &1160488804
 MonoBehaviour:
   m_ObjectHideFlags: 0
